@@ -7,6 +7,8 @@ document.addEventListener("DOMContentLoaded", function () {
     let togglePassword = document.getElementById("toggle-password");
     // Select the button used to suggest a new password
     let suggestPassword = document.getElementById("suggest-password");
+    // Select the element that displays the visit count
+    let visitCountElement = document.getElementById("visit-count");
 
     // Function to handle input events on the password field
     password.oninput = function () {
@@ -71,4 +73,23 @@ document.addEventListener("DOMContentLoaded", function () {
         // Trigger the input event to update the strength indicator
         password.dispatchEvent(new Event('input'));
     });
+
+    // Function to update and display the visit count
+    function updateVisitCount() {
+        // Check if the visit count is already stored in localStorage
+        let visitCount = localStorage.getItem("visitCount");
+        // If not, initialize it to 0
+        if (!visitCount) {
+            visitCount = 0;
+        }
+        // Increment the visit count
+        visitCount = parseInt(visitCount) + 1;
+        // Store the updated visit count in localStorage
+        localStorage.setItem("visitCount", visitCount);
+        // Display the visit count in the visit count element
+        visitCountElement.textContent = `Site visits: ${visitCount}`;
+    }
+
+    // Call the function to update and display the visit count when the page loads
+    updateVisitCount();
 });
