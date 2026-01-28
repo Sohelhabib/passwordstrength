@@ -1,95 +1,248 @@
-document.addEventListener("DOMContentLoaded", function () {
-    // Select the password input element
-    let password = document.getElementById("password");
-    // Select the element that displays the password strength
-    let power = document.getElementById("power-point");
-    // Select the button used to toggle password visibility
-    let togglePassword = document.getElementById("toggle-password");
-    // Select the button used to suggest a new password
-    let suggestPassword = document.getElementById("suggest-password");
-    // Select the element that displays the visit count
-    let visitCountElement = document.getElementById("visit-count");
+(() => {
+  const $ = (q) => document.querySelector(q);
 
-    // Function to handle input events on the password field
-    password.oninput = function () {
-        // Initialize the strength points
-        let point = 0;
-        // Get the current value of the password input
-        let value = password.value;
-        // Arrays for width and color corresponding to strength points
-        let widthPower = ["1%", "25%", "50%", "75%", "100%"];
-        let colorPower = ["#D73F40", "#DC6551", "#F2B84F", "#BDE952", "#3ba62f"];
+  const pwd = $("#pwd");
+  const barFill = $("#barFill");
+  const scorePill = $("#scorePill");
+  const labelPill = $("#labelPill");
+  const crackPill = $("#crackPill");
+  const tipsList = $("#tipsList");
+  const checklist = $("#checklist");
+  const toggleBtn = $("#toggleBtn");
+  const copyBtn = $("#copyBtn");
+  const toast = $("#toast");
 
-        // Check if the password length is at least 6 characters
-        if (value.length >= 6) {
-            // Array of regular expressions to test for different character types
-            let arrayTest = [/[0-9]/, /[a-z]/, /[A-Z]/, /[^0-9a-zA-Z]/];
-            // Increment points for each matching character type
-            arrayTest.forEach((item) => {
-                if (item.test(value)) {
-                    point += 1;
-                }
-            });
-        }
-        // Update the width and color of the strength indicator based on points
-        power.style.width = widthPower[point];
-        power.style.backgroundColor = colorPower[point];
+  const themeBtn = $("#themeBtn");
+  const themeIcon = $("#themeIcon");
+
+  const lenRange = $("#lenRange");
+  const lenVal = $("#lenVal");
+  const genBtn = $("#genBtn");
+  const optUpper = $("#optUpper");
+  const optLower = $("#optLower");
+  const optNum = $("#optNum");
+  const optSym = $("#optSym");
+
+  // ---------- Theme ----------
+  const savedTheme = localStorage.getItem("ps_theme");
+  if (savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
+  syncThemeIcon();
+
+  themeBtn.addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-theme") || "dark";
+    const next = current === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("ps_theme", next);
+    syncThemeIcon();
+  });
+
+  function syncThemeIcon() {
+    const t = document.documentElement.getAttribute("data-theme") || "dark";
+    themeIcon.textContent = t === "dark" ? "🌙" : "☀️";
+  }
+
+  // ---------- Helpers ----------
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add("show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toast.classList.remove("show"), 1400);
+  }
+
+  function hasUpper(s) { return /[A-Z]/.test(s); }
+  function hasLower(s) { return /[a-z]/.test(s); }
+  function hasNum(s) { return /[0-9]/.test(s); }
+  function hasSym(s) { return /[^A-Za-z0-9]/.test(s); }
+
+  // Very basic "common pattern" detection (upgrade later with zxcvbn if you want)
+  function looksCommon(s) {
+    const lower = s.toLowerCase();
+    const common = ["password","qwerty","123456","12345678","111111","admin","letmein","iloveyou","welcome"];
+    if (common.some(w => lower.includes(w))) return true;
+    if (/^(.)\1{5,}$/.test(s)) return true;              // aaaaaaa
+    if (/^(1234|abcd|qwer)/i.test(s)) return true;       // obvious sequences
+    return false;
+  }
+
+  // Estimate combinations per character set size, then crack time assuming X guesses/sec
+  function estimateCrackTimeSeconds(s) {
+    if (!s) return null;
+    let charset = 0;
+    if (hasLower(s)) charset += 26;
+    if (hasUpper(s)) charset += 26;
+    if (hasNum(s)) charset += 10;
+    if (hasSym(s)) charset += 33; // rough printable symbols
+
+    // If only one category, assume smaller effective charset
+    if (charset === 0) charset = 10;
+
+    // guesses per second (rough consumer+botnet-ish midpoint)
+    const guessesPerSec = 1e9; // 1 billion/sec (varies hugely by hash & attacker)
+    const combos = Math.pow(charset, s.length);
+    const avgTries = combos / 2;
+    return avgTries / guessesPerSec;
+  }
+
+  function formatTime(sec) {
+    if (sec == null || !isFinite(sec)) return "—";
+    if (sec < 1) return "< 1 second";
+    const units = [
+      ["year", 365 * 24 * 3600],
+      ["day", 24 * 3600],
+      ["hour", 3600],
+      ["minute", 60],
+      ["second", 1],
+    ];
+    for (const [name, value] of units) {
+      const n = Math.floor(sec / value);
+      if (n >= 1) return `${n} ${name}${n > 1 ? "s" : ""}`;
+    }
+    return `${Math.floor(sec)} seconds`;
+  }
+
+  function scorePassword(s) {
+    if (!s) return { score: 0, label: "Very weak" };
+
+    let score = 0;
+
+    // length
+    score += Math.min(40, s.length * 3);
+
+    // variety
+    const variety = [hasLower(s), hasUpper(s), hasNum(s), hasSym(s)].filter(Boolean).length;
+    score += variety * 12;
+
+    // penalties
+    if (looksCommon(s)) score -= 25;
+    if (s.length < 12) score -= 10;
+
+    score = Math.max(0, Math.min(100, score));
+
+    const label =
+      score >= 85 ? "Excellent" :
+      score >= 70 ? "Strong" :
+      score >= 50 ? "Good" :
+      score >= 30 ? "Weak" : "Very weak";
+
+    return { score, label };
+  }
+
+  function setChecklistState(key, ok) {
+    const li = checklist.querySelector(`li[data-key="${key}"]`);
+    if (!li) return;
+    li.classList.toggle("ok", !!ok);
+  }
+
+  function updateTips(state) {
+    const tips = [];
+    if (!state.len) tips.push("Increase length to 12–16+ characters.");
+    if (!state.upper) tips.push("Add at least one uppercase letter (A–Z).");
+    if (!state.lower) tips.push("Add at least one lowercase letter (a–z).");
+    if (!state.num) tips.push("Add at least one number (0–9).");
+    if (!state.sym) tips.push("Add a symbol (e.g., ! @ # $).");
+    if (!state.common) tips.push("Avoid common words, names, and obvious patterns (1234, qwerty).");
+    if (tips.length === 0) tips.push("Nice — this is a strong password. Consider using a password manager.");
+
+    tipsList.innerHTML = tips.map(t => `<div class="tip">• ${escapeHtml(t)}</div>`).join("");
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/[&<>"']/g, (m) => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[m]));
+  }
+
+  // ---------- Main update ----------
+  function render() {
+    const s = pwd.value;
+
+    const state = {
+      len: s.length >= 12,
+      upper: hasUpper(s),
+      lower: hasLower(s),
+      num: hasNum(s),
+      sym: hasSym(s),
+      common: s.length > 0 ? !looksCommon(s) : false,
     };
 
-    // Add click event listener to the toggle password button
-    togglePassword.addEventListener("click", function () {
-        // Toggle the type attribute of the password input between "password" and "text"
-        let type = password.getAttribute("type") === "password" ? "text" : "password";
-        password.setAttribute("type", type);
-        // Change the button text to indicate the current state (tick for hidden, cross for visible)
-        this.textContent = type === "password" ? "\u2713" : "\u2715";  // Unicode characters for tick and cross marks
-    });
+    Object.entries(state).forEach(([k, v]) => setChecklistState(k, v));
 
-    // Add click event listener to the suggest password button
-    suggestPassword.addEventListener("click", function () {
-        // Function to generate a random strong password
-        function generatePassword() {
-            // Define the character set for the password
-            let chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+[]{}|;:,.<>?";
-            // Define the desired password length
-            let passwordLength = 12;
-            // Initialize the new password as an empty string
-            let newPassword = "";
-            // Loop to generate a random password of the specified length
-            for (let i = 0; i < passwordLength; i++) {
-                // Get a random index from the character set
-                let randomIndex = Math.floor(Math.random() * chars.length);
-                // Append the character at the random index to the new password
-                newPassword += chars[randomIndex];
-            }
-            // Return the generated password
-            return newPassword;
-        }
+    const { score, label } = scorePassword(s);
+    scorePill.textContent = `Score: ${score}/100`;
+    labelPill.textContent = label;
 
-        // Generate a new random password
-        let newPassword = generatePassword();
-        // Set the generated password to the password input field
-        password.value = newPassword;
-        // Trigger the input event to update the strength indicator
-        password.dispatchEvent(new Event('input'));
-    });
+    barFill.style.width = `${score}%`;
 
-    // Function to update and display the visit count
-    function updateVisitCount() {
-        // Check if the visit count is already stored in localStorage
-        let visitCount = localStorage.getItem("visitCount");
-        // If not, initialize it to 0
-        if (!visitCount) {
-            visitCount = 0;
-        }
-        // Increment the visit count
-        visitCount = parseInt(visitCount) + 1;
-        // Store the updated visit count in localStorage
-        localStorage.setItem("visitCount", visitCount);
-        // Display the visit count in the visit count element
-        visitCountElement.textContent = `Site visits: ${visitCount}`;
+    const sec = estimateCrackTimeSeconds(s);
+    crackPill.textContent = `Crack time: ${s ? formatTime(sec) : "—"}`;
+
+    updateTips(state);
+  }
+
+  pwd.addEventListener("input", render);
+
+  // show/hide
+  toggleBtn.addEventListener("click", () => {
+    const isHidden = pwd.type === "password";
+    pwd.type = isHidden ? "text" : "password";
+    toggleBtn.textContent = isHidden ? "🙈" : "👁️";
+    toggleBtn.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
+  });
+
+  // copy
+  copyBtn.addEventListener("click", async () => {
+    const val = pwd.value;
+    if (!val) return showToast("Nothing to copy");
+    try {
+      await navigator.clipboard.writeText(val);
+      showToast("Copied ✅");
+    } catch {
+      showToast("Copy failed");
+    }
+  });
+
+  // generator
+  lenRange.addEventListener("input", () => {
+    lenVal.textContent = lenRange.value;
+  });
+
+  function generatePassword(length, useUpper, useLower, useNum, useSym) {
+    const sets = [];
+    if (useUpper) sets.push("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+    if (useLower) sets.push("abcdefghijklmnopqrstuvwxyz");
+    if (useNum) sets.push("0123456789");
+    if (useSym) sets.push("!@#$%^&*()-_=+[]{};:,.<>?/");
+
+    if (sets.length === 0) return "";
+
+    // ensure at least 1 char from each selected set
+    const chars = [];
+    for (const set of sets) {
+      chars.push(set[Math.floor(Math.random() * set.length)]);
     }
 
-    // Call the function to update and display the visit count when the page loads
-    updateVisitCount();
-});
+    const all = sets.join("");
+    while (chars.length < length) {
+      chars.push(all[Math.floor(Math.random() * all.length)]);
+    }
+
+    // shuffle
+    for (let i = chars.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+    return chars.join("");
+  }
+
+  genBtn.addEventListener("click", () => {
+    const length = Number(lenRange.value);
+    const g = generatePassword(length, optUpper.checked, optLower.checked, optNum.checked, optSym.checked);
+    if (!g) return showToast("Select at least 1 option");
+    pwd.value = g;
+    render();
+    showToast("Generated ✨");
+  });
+
+  // initial
+  render();
+})();
