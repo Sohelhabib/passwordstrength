@@ -71,14 +71,34 @@ window.addEventListener("DOMContentLoaded", () => {
   const hasNum = (s) => /[0-9]/.test(s);
   const hasSym = (s) => /[^A-Za-z0-9]/.test(s);
 
-  function looksCommon(s) {
-    const lower = s.toLowerCase();
-    const common = ["password","qwerty","123456","12345678","111111","admin","letmein","iloveyou","welcome"];
-    if (common.some(w => lower.includes(w))) return true;
-    if (/^(.)\1{5,}$/.test(s)) return true;
-    if (/^(1234|abcd|qwer)/i.test(s)) return true;
-    return false;
+function looksCommon(s) {
+  const lower = s.toLowerCase();
+  const common = [
+    "password","qwerty","123456","12345678",
+    "111111","admin","letmein","iloveyou","welcome"
+  ];
+
+  // common words
+  if (common.some(w => lower.includes(w))) return true;
+
+  // repeated characters (aaaaaa, 111111)
+  let repeated = true;
+  for (let i = 1; i < s.length; i++) {
+    if (s[i] !== s[0]) {
+      repeated = false;
+      break;
+    }
   }
+  if (repeated && s.length >= 6) return true;
+
+  // obvious sequences
+  if (lower.startsWith("1234") || lower.startsWith("abcd") || lower.startsWith("qwer")) {
+    return true;
+  }
+
+  return false;
+}
+
 
   function scorePassword(s) {
     if (!s) return { score: 0, label: "Very weak" };
