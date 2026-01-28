@@ -1,28 +1,100 @@
-<!DOCTYPE html>
-<html lang="en">
-
+<!doctype html>
+<html lang="en" data-theme="dark">
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="style.css" />
-    <script src="script.js" defer></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Password Strength | Sohel Habib</title>
+  <meta name="description" content="Modern password strength checker with generator and security tips." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
-    <div class="group">
-        <h1 id="top">Password Strength Tester</h1>
-        <label for="password"></label>
-        <div class="password-container">
-            <input type="password" id="password" placeholder="Type your password here" />
-            <button id="toggle-password" type="button">&#10003;</button>
-        </div>
-        <button id="suggest-password" type="button">Suggest Password</button>
-        <label for="power-point">Strength of password</label>
-        <div class="power-container">
-            <div id="power-point"></div>
-        </div>
-        <div id="visit-count"></div>
-        <h4>Created with 💗 by Sohel Habib</h4>
-    </div>
-</body>
+  <main class="wrap">
+    <header class="topbar">
+      <div>
+        <h1>Password Strength</h1>
+        <p class="sub">Check strength, get tips, and generate a strong password.</p>
+      </div>
 
+      <button class="icon-btn" id="themeBtn" aria-label="Toggle theme" title="Toggle theme">
+        <span id="themeIcon">🌙</span>
+      </button>
+    </header>
+
+    <section class="card">
+      <div class="field">
+        <label for="pwd">Password</label>
+
+        <div class="input-row">
+          <input id="pwd" type="password" placeholder="Type a password…" autocomplete="new-password" />
+          <button class="icon-btn" id="toggleBtn" aria-label="Show password" title="Show/Hide">👁️</button>
+          <button class="btn" id="copyBtn">Copy</button>
+        </div>
+
+        <div class="meta">
+          <div class="pill" id="scorePill">Score: 0/100</div>
+          <div class="pill" id="labelPill">Very weak</div>
+          <div class="pill" id="crackPill">Crack time: —</div>
+        </div>
+
+        <div class="bar">
+          <div class="bar__fill" id="barFill"></div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="panel">
+          <h2>Checklist</h2>
+          <ul class="checklist" id="checklist">
+            <li data-key="len"><span class="dot"></span> At least 12 characters</li>
+            <li data-key="upper"><span class="dot"></span> Has uppercase letter</li>
+            <li data-key="lower"><span class="dot"></span> Has lowercase letter</li>
+            <li data-key="num"><span class="dot"></span> Has number</li>
+            <li data-key="sym"><span class="dot"></span> Has symbol</li>
+            <li data-key="common"><span class="dot"></span> Not a common pattern/word</li>
+          </ul>
+        </div>
+
+        <div class="panel">
+          <h2>Generator</h2>
+
+          <div class="gen">
+            <div class="row">
+              <label for="lenRange">Length: <span id="lenVal">16</span></label>
+              <input id="lenRange" type="range" min="8" max="32" value="16" />
+            </div>
+
+            <div class="toggles">
+              <label class="toggle"><input type="checkbox" id="optUpper" checked> Uppercase</label>
+              <label class="toggle"><input type="checkbox" id="optLower" checked> Lowercase</label>
+              <label class="toggle"><input type="checkbox" id="optNum" checked> Numbers</label>
+              <label class="toggle"><input type="checkbox" id="optSym" checked> Symbols</label>
+            </div>
+
+            <button class="btn primary" id="genBtn">Generate Strong Password</button>
+            <p class="hint">Tip: Use a password manager and enable MFA for important accounts.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="tips">
+        <h2>Suggestions</h2>
+        <div id="tipsList" class="tips__list">Start typing to see suggestions.</div>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <span>Made by Md Sohel Habib</span>
+      <span class="sep">•</span>
+      <span>Do not paste real passwords you use on banking accounts</span>
+    </footer>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
 </html>
